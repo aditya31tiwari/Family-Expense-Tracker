@@ -1,224 +1,283 @@
 # app.py
+
 import streamlit as st
-from datetime import date
+from main import FamilyExpenseTracker, Expense
+import matplotlib.pyplot as plt
+from streamlit_option_menu import option_menu
+from pathlib import Path
+import datetime
 import pandas as pd
-import plotly.express as px
+import io
 
-from main import FamilyExpenseTracker
+# Streamlit configuration
+st.set_page_config(page_title="Family Expense Tracker", page_icon="💰")
+st.title("")  # Clear the default title
 
-st.set_page_config(page_title="Family Expense Tracker", layout="wide")
-st.title("Family Expense Tracker")
+# Path Settings
+current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
+css_file = current_dir / "styles" / "main.css"
 
-# single tracker instance in session
-if "tracker" not in st.session_state:
-    st.session_state.tracker = FamilyExpenseTracker()
+with open(css_file) as f:
+    st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
 
-if "last_action" not in st.session_state:
-    st.session_state.last_action = None
+# Create a session state object
+session_state = st.session_state
 
-tracker: FamilyExpenseTracker = st.session_state.tracker
+# Check if the 'expense_tracker' object exists in the session state
+if "expense_tracker" not in session_state:
+    # If not, create and initialize it
+    session_state.expense_tracker = FamilyExpenseTracker()
 
-# ---------- helper UI functions ----------
-def show_members_page():
-    st.header("Members — Add / Manage")
-    with st.form("member_form", clear_on_submit=True):
-        name = st.text_input("Member name").strip().title()
-        earning = st.checkbox("Earning status")
-        earnings = 0.0
-        if earning:
-            earnings = st.number_input("Earnings (monthly)", min_value=0.0, value=0.0, step=100.0)
-        submit_member = st.form_submit_button("Save member")
-        if submit_member:
+# Center-align the heading using HTML
+st.markdown(
+    '<h1 style="text-align: center;">Family Expense Tracker</h1>',
+    unsafe_allow_html=True,
+)
+
+# Navigation Menu
+selected = option_menu(
+    menu_title=None,
+    options=["Data Entry", "Data Overview", "Data Visualization"],
+    icons=[
+        "pencil-fill",
+        "clipboard2-data",
+        "bar-chart-fill",
+    ],  # https://icons.getbootstrap.com/
+    orientation="horizontal",
+)
+
+# Access the 'expense_tracker' object from session state
+expense_tracker = session_state.expense_tracker
+
+if selected == "Data Entry":
+    st.header("Add Family Member")
+    with st.expander("Add Family Member"):
+        # Sidebar for adding family members
+        member_name = st.text_input("Name").title()
+        earning_status = st.checkbox("Earning Status")
+        if earning_status:
+            earnings = st.number_input("Earnings", value=1, min_value=1)
+        else:
+            earnings = 0
+
+        if st.button("Add Member"):
             try:
-                tracker.add_member(name, earning, earnings)
-                st.success(f"Saved '{name}'")
-                st.session_state.last_action = "member_added"
-                st.experimental_rerun()
-            except Exception as e:
+                # Check if family member exists
+                member = [
+                    member
+                    for member in expense_tracker.members
+                    if member.name == member_name
+                ]
+                # If not exist add family member
+                if not member:
+                    expense_tracker.add_family_member(
+                        member_name, earning_status, earnings
+                    )
+                    st.success("Member added successfully!")
+                # Else, update it
+                else:
+                    expense_tracker.update_family_member(
+                        member[0], earning_status, earnings
+                    )
+                    st.success("Member updated successfully!")
+            except ValueError as e:
                 st.error(str(e))
 
-    st.markdown("---")
-    mems = tracker.get_members_df()
-    if mems.empty:
-        st.info("No members yet. Add family members to get started.")
-    else:
-        st.subheader("Existing members")
-        for _, row in mems.iterrows():
-            col1, col2, col3, col4 = st.columns([2,1,1,1])
-            col1.write(f"**{row['name']}**")
-            col2.write("Earning" if row["earning_status"] else "Not earning")
-            col3.write(f"{row['earnings']:.2f}")
-            if col4.button(f"Delete {row['name']}", key=f"del_member_{row['id']}"):
-                tracker.delete_member(row["name"])
-                st.success(f"Deleted {row['name']}")
-                st.experimental_rerun()
+    # Sidebar for adding expenses
+    st.header("Add Expenses")
+    with st.expander("Add Expenses"):
+        expense_category = st.selectbox(
+            "Category",
+            (
+                "Housing",
+                "Food",
+                "Transportation",
+                "Entertainment",
+                "Child-Related",
+                "Medical",
+                "Investment",
+                "Miscellaneous",
+            ),
+        )
+        expense_description = st.text_input("Description (optional)").title()
+        expense_value = st.number_input("Value", min_value=0)
+        expense_date = st.date_input("Date", value=datetime.date.today())
 
-def add_expense_form():
-    st.header("Add Expense")
-    members = tracker.available_persons()
-    if not members:
-        st.info("No members present. Add members first.")
-        return
-
-    with st.form("expense_form", clear_on_submit=True):
-        person = st.selectbox("Person", members)
-        # expense type first
-        expense_type = st.selectbox("Expense type", ["big", "small"])
-        # recurring toggle (only show period when recurring or big)
-        is_recurring = st.checkbox("Mark as recurring (EMI / yearly / subscription)", value=False)
-        show_period = is_recurring or (expense_type == "big")
-        if show_period:
-            category_period = st.selectbox(
-                "Period Category",
-                ["daily", "one-time", "monthly", "quarterly", "2-quarter", "3-quarter", "yearly"],
-            )
-        else:
-            category_period = "one-time"
-        # category after type/period
-        category = st.selectbox("Category", ["Housing", "Food", "Transportation", "Entertainment", "Child-Related", "Medical", "Investment", "Miscellaneous"])
-        # sub-type only for big
-        sub_map = {
-            "big": ["EMI1", "EMI2", "HomeLoan", "CarLoan", "SIP1", "SIP2"],
-            "small": []
-        }
-        sub_type = ""
-        if expense_type == "big":
-            sub_type = st.selectbox("Sub-type (if applicable)", sub_map["big"])
-        description = st.text_input("Description (optional)")
-        amount = st.number_input("Amount", min_value=0.0, value=0.0, step=10.0)
-        exp_date = st.date_input("Date", value=date.today())
-        submitted = st.form_submit_button("Add expense")
-        if submitted:
-            if amount <= 0:
-                st.error("Enter an amount greater than 0.")
-            else:
-                # for small items we keep sub_type empty and rely on description
-                if expense_type == "small":
-                    sub_type_to_store = ""  # alternative: description.strip()[:100]
-                else:
-                    sub_type_to_store = sub_type
-                try:
-                    tracker.add_expense(person, float(amount), category_period, category, expense_type, sub_type_to_store, description, exp_date.isoformat())
-                    st.success("Expense added.")
-                    st.session_state.last_action = "expense_added"
-                    st.experimental_rerun()
-                except Exception as e:
-                    st.error(str(e))
-
-def render_dashboard():
-    st.header("Dashboard")
-    # summary cards
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total earnings", f"{tracker.total_earnings():.2f}")
-    col2.metric("Total expenditure", f"{tracker.total_expenditure():.2f}")
-    col3.metric("Remaining balance", f"{tracker.remaining_balance():.2f}")
-    col4.button("➕ Add Expense", key="dash_add_expense_button")
-
-    st.markdown("---")
-    # recent activity
-    df = tracker.get_expenses_df()
-    if df.empty:
-        st.info("No expenses recorded yet. Use 'Add Expense' to log your first expense.")
-    else:
-        st.subheader("Recent activity")
-        recent_n = 5
-        recent = df.sort_values("date", ascending=False).head(recent_n)
-        st.table(
-            recent[["id","date","person","amount","category","expense_type","sub_type","description"]]
-            .sort_values("date", ascending=False)
-            .reset_index(drop=True)
+        # NEW: Payment frequency selector
+        expense_frequency = st.selectbox(
+            "Payment frequency",
+            ("One-time", "Quarterly", "Yearly"),
+            index=0,
         )
 
-        # quick link to open full table under expander
-        with st.expander("Open full table & filters", expanded=False):
-            render_full_table(df)
+        if st.button("Add Expense"):
+            try:
+                # Add the expense (keeps aggregated view) and also appends raw log
+                expense_tracker.merge_similar_category(
+                    expense_value,
+                    expense_category,
+                    expense_description,
+                    expense_date,
+                    expense_frequency,
+                )
+                st.success("Expense added successfully!")
+            except ValueError as e:
+                st.error(str(e))
 
-def render_full_table(df):
-    # filters area
-    st.subheader("Expenses & Filters")
-    c1, c2, c3, c4 = st.columns([1,1,2,2])
-    persons = ["All"] + sorted(df["person"].unique().tolist())
-    filt_person = c1.selectbox("Person", options=persons)
-    periods = ["All"] + sorted(df["category_period"].fillna("Unknown").unique().tolist())
-    filt_period = c2.selectbox("Period", options=periods)
-    min_date = df["date"].min().date()
-    max_date = df["date"].max().date()
-    date_range = c3.date_input("Date range", value=(min_date, max_date))
-    search = c4.text_input("Search description/sub-type")
+elif selected == "Data Overview":
+    # Display family members
+    if not expense_tracker.members:
+        st.info(
+            "Start by adding family members to track your expenses together! Currently, no members have been added. Get started by clicking the 'Add Member' from the Data Entry Tab"
+        )
+    else:
+        st.header("Family Members")
+        (
+            name_column,
+            earning_status_column,
+            earnings_column,
+            family_delete_column,
+        ) = st.columns(4)
+        name_column.write("**Name**")
+        earning_status_column.write("**Earning status**")
+        earnings_column.write("**Earnings**")
+        family_delete_column.write("**Action**")
 
-    filtered = df.copy()
-    if filt_person != "All":
-        filtered = filtered[filtered["person"] == filt_person]
-    if filt_period != "All":
-        filtered = filtered[filtered["category_period"] == filt_period]
-    start, end = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
-    filtered = filtered[(filtered["date"] >= start) & (filtered["date"] <= end)]
-    if search:
-        filtered = filtered[filtered["description"].str.contains(search, case=False, na=False) | filtered["sub_type"].str.contains(search, case=False, na=False)]
+        for member in expense_tracker.members:
+            name_column.write(member.name)
+            earning_status_column.write(
+                "Earning" if member.earning_status else "Not Earning"
+            )
+            earnings_column.write(member.earnings)
 
-    # pagination and download
-    total_rows = len(filtered)
-    st.write(f"Matching records: **{total_rows}**")
-    page_size = st.selectbox("Rows per page", options=[10,25,50,100], index=1)
-    pages = (total_rows + page_size - 1) // page_size if total_rows else 1
-    page = st.number_input("Page", min_value=1, max_value=max(1,pages), value=1, step=1)
-    start = (page - 1) * page_size
-    end = start + page_size
-    display_df = filtered.sort_values("date", ascending=False).iloc[start:end]
-    st.dataframe(display_df.reset_index(drop=True), use_container_width=True)
+            if family_delete_column.button(f"Delete member: {member.name}"):
+                expense_tracker.delete_family_member(member)
+                st.rerun()
 
-    csv = filtered.to_csv(index=False)
-    st.download_button(label="Download filtered as CSV", data=csv, file_name="expenses_filtered.csv", mime="text/csv")
+        # Display aggregated expenses (by category)
+        st.header("Expenses (Aggregated by Category)")
+        if not expense_tracker.expense_list:
+            st.info(
+                "Currently, no expenses have been added. Get started by clicking the 'Add Expenses' from the Data Entry Tab"
+            )
+        else:
+            (
+                value_column,
+                category_column,
+                description_column,
+                date_column,
+                frequency_column,
+                expense_delete_column,
+            ) = st.columns(6)
+            value_column.write("**Value**")
+            category_column.write("**Category**")
+            description_column.write("**Description**")
+            date_column.write("**Date**")
+            frequency_column.write("**Frequency**")
+            expense_delete_column.write("**Delete**")
 
-    # delete UI
-    ids = filtered["id"].tolist()
-    if ids:
-        del_id = st.selectbox("Delete expense id (from filtered results)", options=["None"] + ids)
-        if del_id != "None" and st.button("Delete selected"):
-            tracker.delete_expense(int(del_id))
-            st.success(f"Deleted expense id {del_id}")
-            st.experimental_rerun()
+            # Use enumerate to create unique delete buttons
+            for idx, expense in enumerate(expense_tracker.expense_list):
+                value_column.write(expense.value)
+                category_column.write(expense.category)
+                description_column.write(expense.description)
+                # Aggregated entry might not have a meaningful single date, show placeholder
+                date_column.write(expense.date)
+                frequency_column.write(getattr(expense, "frequency", "One-time"))
 
-# ---------- Main navigation logic ----------
-# Determine initial mode based on DB state
-members_df = tracker.get_members_df()
-has_members = not members_df.empty
+                if expense_delete_column.button(f"Delete agg {idx}"):
+                    expense_tracker.delete_expense(expense)
+                    st.rerun()
 
-# session navigation state
-if "page" not in st.session_state:
-    # default: if no members -> members page; else dashboard
-    st.session_state.page = "members" if not has_members else "dashboard"
+        # Totals
+        total_earnings = expense_tracker.calculate_total_earnings()               # Calculate total earnings
+        total_expenditure = expense_tracker.calculate_total_expenditure()         # Calculate total expenditure
+        remaining_balance = total_earnings - total_expenditure                    # Calculate remaining balance
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Earnings", f"{total_earnings}")          # Display total earnings
+        col2.metric("Total Expenditure", f"{total_expenditure}")    # Display total expenditure 
+        col3.metric("Remaining Balance", f"{remaining_balance}")    # Display remaining balance 
 
-# If we just added members, offer a dialog asking to add expenses
-if st.session_state.last_action == "member_added":
-    # show a small banner with action buttons
-    st.success("Member added successfully.")
-    col_a, col_b = st.columns([1,1])
-    if col_a.button("Add expenses now"):
-        st.session_state.page = "add_expense"
-        st.session_state.last_action = None
-        st.experimental_rerun()
-    if col_b.button("Not now"):
-        st.session_state.page = "dashboard"
-        st.session_state.last_action = None
-        st.experimental_rerun()
+        # --- RAW PAYMENT LOG (chronological) + Download ---
+        st.header("Payment Log (All recorded payments)")
+        if not expense_tracker.expense_log:
+            st.info("No payments recorded yet.")
+        else:
+            # Build DataFrame for display and download
+            df = pd.DataFrame(
+                [
+                    {
+                        "Date": e.date,
+                        "Category": e.category,
+                        "Description": e.description,
+                        "Value": e.value,
+                        "Frequency": e.frequency,
+                    }
+                    for e in expense_tracker.expense_log
+                ]
+            )
 
-# Top navigation (simple)
-nav1, nav2, nav3 = st.columns([1,1,1])
-if nav1.button("Dashboard"):
-    st.session_state.page = "dashboard"
-if nav2.button("Add Expense"):
-    st.session_state.page = "add_expense"
-if nav3.button("Members"):
-    st.session_state.page = "members"
+            # Show the log (streamlit-friendly)
+            st.dataframe(df)
 
-st.markdown("---")
+            # Download button: CSV bytes
+            csv_buffer = io.StringIO()
+            df.to_csv(csv_buffer, index=False)
+            csv_data = csv_buffer.getvalue().encode("utf-8")
 
-# Page render
-if st.session_state.page == "members":
-    show_members_page()
-elif st.session_state.page == "add_expense":
-    add_expense_form()
-else:
-    # dashboard default
-    render_dashboard()
+            st.download_button(
+                label="Download log (CSV)",
+                data=csv_data,
+                file_name=f"expense_log_{datetime.date.today().isoformat()}.csv",
+                mime="text/csv",
+            )
+
+            # Provide delete per raw entry (so user can remove a specific log row)
+            st.write("Delete specific log entries:")
+            # We'll render a compact table with a delete button per row
+            for idx, log_entry in enumerate(list(expense_tracker.expense_log)):
+                cols = st.columns([2, 2, 2, 1, 1])
+                cols[0].write(log_entry.date)
+                cols[1].write(log_entry.category)
+                cols[2].write(log_entry.value)
+                cols[3].write(log_entry.frequency)
+                if cols[4].button(f"Delete log {idx}"):
+                    expense_tracker.delete_log_entry(log_entry)
+                    st.success("Log entry deleted and aggregates updated.")
+                    st.rerun()
+
+elif selected == "Data Visualization":
+    # Create a list of expenses and their values
+    expense_data = [
+        (expense.category, expense.value) for expense in expense_tracker.expense_list
+    ]
+    if expense_data:
+        # Calculate the percentage of expenses for the pie chart
+        expenses = [data[0] for data in expense_data]
+        values = [data[1] for data in expense_data]
+        total = sum(values)
+        if total <= 0:
+            st.info("No expense values to visualize.")
+        else:
+            percentages = [(value / total) * 100 for value in values]
+
+            # Create a smaller pie chart with a transparent background
+            fig, ax = plt.subplots(figsize=(3, 3), dpi=300)
+            ax.pie(
+                percentages,
+                labels=expenses,
+                autopct="%1.1f%%",
+                startangle=140,
+                textprops={"fontsize": 6, "color": "white"},
+            )
+            ax.set_title("Expense Distribution", fontsize=12, color="white")
+
+            # Set the background color to be transparent
+            fig.patch.set_facecolor("none")
+
+            # Display the pie chart in Streamlit
+            st.pyplot(fig)
+    else:
+        st.info(
+            "Start by adding family members to track your expenses together! Currently, no members have been added. Get started by clicking the 'Add Member' from the Data Entry Tab."
+        )
