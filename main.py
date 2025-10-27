@@ -33,7 +33,7 @@ def init_db():
             person TEXT NOT NULL,
             description TEXT,
             amount REAL NOT NULL,
-            category_period TEXT,   -- monthly, quarterly, 2-quarter, 3-quarter, yearly, one-time
+            category_period TEXT,   -- daily, one-time, monthly, quarterly, 2-quarter, 3-quarter, yearly
             category TEXT,          -- Housing, Food...
             expense_type TEXT,      -- big / small
             sub_type TEXT,
@@ -50,12 +50,12 @@ init_db()
 
 class FamilyExpenseTracker:
     def __init__(self):
-        # nothing heavy: DB is the source of truth
+        # class uses DB as source of truth; no heavy memory objects
         pass
 
     # ---------- members ----------
     def add_member(self, name: str, earning_status: bool=False, earnings: float=0.0):
-        name = name.strip().title()
+        name = (name or "").strip().title()
         if not name:
             raise ValueError("Name cannot be empty.")
         conn = _get_conn()
@@ -64,7 +64,6 @@ class FamilyExpenseTracker:
                 "INSERT OR IGNORE INTO members (name, earning_status, earnings) VALUES (?, ?, ?)",
                 (name, int(bool(earning_status)), float(earnings)),
             )
-            # If existed and we want to update explicitly, caller should call update_member
             conn.commit()
         finally:
             conn.close()
@@ -105,10 +104,10 @@ class FamilyExpenseTracker:
                     description: Optional[str],
                     date_iso: str):
         # basic validation
-        person = person.strip().title()
+        person = (person or "").strip().title()
         if not person:
             raise ValueError("Expense must be associated with a person.")
-        if amount <= 0:
+        if amount is None or float(amount) <= 0:
             raise ValueError("Amount must be positive.")
         conn = _get_conn()
         try:
