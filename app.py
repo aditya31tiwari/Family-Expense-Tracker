@@ -1,7 +1,7 @@
 # app.py
 
 import streamlit as st
-from main import FamilyExpenseTracker, Expense
+from main import FamilyExpenseTracker
 import matplotlib.pyplot as plt
 from streamlit_option_menu import option_menu
 from pathlib import Path
