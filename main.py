@@ -1,165 +1,148 @@
 # main.py
-from pathlib import Path
-import sqlite3
-import pandas as pd
-from typing import Optional
-from datetime import datetime
 
-ROOT = Path(__file__).parent
-DB_PATH = ROOT / "expenses.db"
+class FamilyMember:
+    def __init__(self, name, earning_status=True, earnings=0):
+        self.name = name
+        self.earning_status = earning_status
+        self.earnings = earnings
 
-def _get_conn():
-    conn = sqlite3.connect(DB_PATH.as_posix(), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+    def __str__(self):
+        return (
+            f"Name: {self.name}, Earning Status: {'Earning' if self.earning_status else 'Not Earning'}, "
+            f"Earnings: {self.earnings}"
+        )
 
-def init_db():
-    conn = _get_conn()
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS members (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            earning_status INTEGER DEFAULT 0,
-            earnings REAL DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now'))
-        );
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            person TEXT NOT NULL,
-            description TEXT,
-            amount REAL NOT NULL,
-            category_period TEXT,   -- daily, one-time, monthly, quarterly, 2-quarter, 3-quarter, yearly
-            category TEXT,          -- Housing, Food...
-            expense_type TEXT,      -- big / small
-            sub_type TEXT,
-            date TEXT NOT NULL,
-            created_at TEXT DEFAULT (datetime('now'))
-        );
-        """
-    )
-    conn.commit()
-    conn.close()
 
-# initialize DB on import (idempotent)
-init_db()
+class Expense:
+    def __init__(self, value, category, description, date, frequency="One-time"):
+        """
+        frequency: "One-time", "Quarterly", or "Yearly"
+        """
+        self.value = value
+        self.category = category
+        self.description = description
+        self.date = date
+        self.frequency = frequency
+
+    def __str__(self):
+        return (
+            f"Value: {self.value}, Category: {self.category}, Description: {self.description}, "
+            f"Date: {self.date}, Frequency: {self.frequency}"
+        )
+
 
 class FamilyExpenseTracker:
     def __init__(self):
-        # class uses DB as source of truth; no heavy memory objects
-        pass
+        # Aggregated display list (current UI uses this)
+        self.members = []
+        self.expense_list = []
+        # Raw chronological log of every payment (for download / exact history)
+        self.expense_log = []
 
-    # ---------- members ----------
-    def add_member(self, name: str, earning_status: bool=False, earnings: float=0.0):
-        name = (name or "").strip().title()
-        if not name:
-            raise ValueError("Name cannot be empty.")
-        conn = _get_conn()
-        try:
-            conn.execute(
-                "INSERT OR IGNORE INTO members (name, earning_status, earnings) VALUES (?, ?, ?)",
-                (name, int(bool(earning_status)), float(earnings)),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+    # --- Members ---
+    def add_family_member(self, name, earning_status=True, earnings=0):
+        if not name.strip():
+            raise ValueError("Name field cannot be empty")
 
-    def update_member(self, name: str, earning_status: bool, earnings: float):
-        conn = _get_conn()
-        try:
-            conn.execute(
-                "UPDATE members SET earning_status=?, earnings=? WHERE name=?",
-                (int(bool(earning_status)), float(earnings), name.title()),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        member = FamilyMember(name, earning_status, earnings)
+        self.members.append(member)
 
-    def delete_member(self, member_name: str):
-        conn = _get_conn()
-        try:
-            conn.execute("DELETE FROM members WHERE name = ?", (member_name,))
-            conn.commit()
-        finally:
-            conn.close()
+    def delete_family_member(self, member):
+        self.members.remove(member)
 
-    def get_members_df(self) -> pd.DataFrame:
-        conn = _get_conn()
-        df = pd.read_sql_query("SELECT * FROM members ORDER BY name", conn)
-        conn.close()
-        return df
+    def update_family_member(self, member, earning_status=True, earnings=0):
+        if member:
+            member.earning_status = earning_status
+            member.earnings = earnings
 
-    # ---------- expenses ----------
-    def add_expense(self,
-                    person: str,
-                    amount: float,
-                    category_period: str,
-                    category: str,
-                    expense_type: str,
-                    sub_type: Optional[str],
-                    description: Optional[str],
-                    date_iso: str):
-        # basic validation
-        person = (person or "").strip().title()
-        if not person:
-            raise ValueError("Expense must be associated with a person.")
-        if amount is None or float(amount) <= 0:
-            raise ValueError("Amount must be positive.")
-        conn = _get_conn()
-        try:
-            conn.execute(
-                """INSERT INTO expenses
-                (person, description, amount, category_period, category, expense_type, sub_type, date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (person, description or "", float(amount), category_period, category, expense_type, sub_type or "", date_iso),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+    def calculate_total_earnings(self):
+        total_earnings = sum(
+            member.earnings for member in self.members if member.earning_status
+        )
+        return total_earnings
 
-    def delete_expense(self, expense_id: int):
-        conn = _get_conn()
-        try:
-            conn.execute("DELETE FROM expenses WHERE id = ?", (int(expense_id),))
-            conn.commit()
-        finally:
-            conn.close()
+    # --- Expenses / Log ---
+    def add_expense(self, value, category, description, date, frequency="One-time"):
+        if value == 0:
+            raise ValueError("Value cannot be zero")
+        if not category.strip():
+            raise ValueError("Please choose a category")
 
-    def get_expenses_df(self) -> pd.DataFrame:
-        conn = _get_conn()
-        df = pd.read_sql_query("SELECT * FROM expenses ORDER BY date DESC, created_at DESC", conn, parse_dates=["date","created_at"])
-        conn.close()
-        if not df.empty:
-            df["date"] = pd.to_datetime(df["date"])
-        return df
+        expense = Expense(value, category, description, date, frequency)
+        self.expense_list.append(expense)
+        # Always append to the raw log as well
+        self.expense_log.append(Expense(value, category, description, date, frequency))
 
-    # ---------- aggregates ----------
-    def total_earnings(self) -> float:
-        df = self.get_members_df()
-        if df.empty:
-            return 0.0
-        return float(df["earnings"].sum())
+    def delete_expense(self, expense):
+        """Delete from aggregated expense_list (used by aggregated table delete)."""
+        if expense in self.expense_list:
+            self.expense_list.remove(expense)
 
-    def total_expenditure(self) -> float:
-        df = self.get_expenses_df()
-        if df.empty:
-            return 0.0
-        return float(df["amount"].sum())
+    def delete_log_entry(self, log_entry):
+        """
+        Delete a single raw log entry and propagate the change to the aggregated list:
+        - Remove the log entry
+        - Subtract its value from the aggregated expense for that category
+        - If aggregated value becomes <= 0, remove that aggregated entry
+        """
+        if log_entry in self.expense_log:
+            # Remove from raw log
+            self.expense_log.remove(log_entry)
 
-    def remaining_balance(self) -> float:
-        return self.total_earnings() - self.total_expenditure()
+            # Find aggregated entry with same category
+            agg = None
+            for e in self.expense_list:
+                if e.category == log_entry.category:
+                    agg = e
+                    break
 
-    # helpers to expose options
-    def available_persons(self):
-        df = self.get_members_df()
-        return df["name"].tolist() if not df.empty else []
+            if agg:
+                agg.value -= log_entry.value
+                # If aggregated goes to zero or negative, remove it
+                if agg.value <= 0:
+                    try:
+                        self.expense_list.remove(agg)
+                    except ValueError:
+                        pass
 
-    def sanitize_date(self, dt):
-        # accepts date or datetime object or iso string
-        if hasattr(dt, "isoformat"):
-            return dt.isoformat()
-        return str(dt)
+    def merge_similar_category(self, value, category, description, date, frequency="One-time"):
+        """
+        Keep the current merge-by-category behaviour for the UI (aggregated view),
+        BUT always append the raw entry into expense_log so download/history is preserved.
+        """
+        if value == 0:
+            raise ValueError("Value cannot be zero")
+        if not category.strip():
+            raise ValueError("Please choose a category")
+
+        existing_expense = None
+        for expense in self.expense_list:
+            if expense.category == category:
+                existing_expense = expense
+                break
+
+        if existing_expense:
+            existing_expense.value += value
+            if description:
+                existing_expense.description = description
+            # Note: we do not change existing_expense.date because it's aggregated.
+        else:
+            # Create aggregated entry for display
+            self.add_expense(value, category, description, date, frequency)
+            # add_expense already appends to expense_log, but since add_expense
+            # creates another Expense for aggregator and another for log,
+            # we already have both in place.
+            # To avoid duplicate log entries, below we ensure we didn't double append.
+            # (Because add_expense adds both aggregated & log, we can skip extra append.)
+            # So nothing extra needed here.
+
+        # ALWAYS append a raw log entry (chronological)
+        self.expense_log.append(Expense(value, category, description, date, frequency))
+
+    def calculate_total_expenditure(self):
+        total_expenditure = sum(expense.value for expense in self.expense_list)
+        return total_expenditure
+
+
+if __name__ == "__main__":
+    expense_tracker = FamilyExpenseTracker()
