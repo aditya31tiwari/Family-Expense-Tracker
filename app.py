@@ -10,7 +10,7 @@ import pandas as pd
 import io
 
 # Streamlit configuration
-st.set_page_config(page_title="Family Expense Tracker", page_icon="💰")
+st.set_page_config(page_title="Family Expense Tracker", page_icon="💰", layout="wide")
 st.title("")  # Clear the default title
 
 # Path Settings
