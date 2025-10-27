@@ -106,37 +106,32 @@ class FamilyExpenseTracker:
                         pass
 
     def merge_similar_category(self, value, category, description, date, frequency="One-time"):
-        """
-        Keep the current merge-by-category behaviour for the UI (aggregated view),
-        BUT always append the raw entry into expense_log so download/history is preserved.
-        """
-        if value == 0:
-            raise ValueError("Value cannot be zero")
-        if not category.strip():
-            raise ValueError("Please choose a category")
+    """
+    Keep merge-by-category for the aggregated view, but append a raw log entry only once.
+    If category already exists -> update aggregator and append a raw log entry.
+    If category is new -> call add_expense(...) which already adds both aggregator and raw log.
+    """
+    if value == 0:
+        raise ValueError("Value cannot be zero")
+    if not category.strip():
+        raise ValueError("Please choose a category")
 
-        existing_expense = None
-        for expense in self.expense_list:
-            if expense.category == category:
-                existing_expense = expense
-                break
+    existing_expense = None
+    for expense in self.expense_list:
+        if expense.category == category:
+            existing_expense = expense
+            break
 
-        if existing_expense:
-            existing_expense.value += value
-            if description:
-                existing_expense.description = description
-            # Note: we do not change existing_expense.date because it's aggregated.
-        else:
-            # Create aggregated entry for display
-            self.add_expense(value, category, description, date, frequency)
-            # add_expense already appends to expense_log, but since add_expense
-            # creates another Expense for aggregator and another for log,
-            # we already have both in place.
-            # To avoid duplicate log entries, below we ensure we didn't double append.
-            # (Because add_expense adds both aggregated & log, we can skip extra append.)
-            # So nothing extra needed here.
+    if existing_expense:
+        existing_expense.value += value
+        if description:
+            existing_expense.description = description
+        # Append single raw log entry for this submission
+        self.expense_log.append(Expense(value, category, description, date, frequency))
+    else:
+        # Create aggregated entry and raw log via add_expense (add_expense already appends to expense_log)
+        self.add_expense(value, category, description, date, frequency)
 
-        # ALWAYS append a raw log entry (chronological)
         self.expense_log.append(Expense(value, category, description, date, frequency))
 
     def calculate_total_expenditure(self):
