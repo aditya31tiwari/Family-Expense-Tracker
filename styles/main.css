@@ -1,217 +1,366 @@
 /* ui-dashboard.css */
-/* -----------------------------------------------------
-   Family Expense Tracker Dashboard Style
-   Inspired by Crema dashboard UI (dark sidebar + light content)
-   ----------------------------------------------------- */
+/*
+ * Streamlit Dashboard Stylesheet
+ *
+ * How to use:
+ * 1. Place this file in your app's `static/` directory (if you have one)
+ * and load it (requires Streamlit server config).
+ * 2. OR: Minify this file and inject it directly into your app.py using:
+ * with open("ui-dashboard.css") as f:
+ * st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+ *
+ * How to customize:
+ * - Change the accent color: Modify `--accent`
+ * - Change sidebar width: Modify `--sidebar-width`
+ */
 
-/* --- Theme variables --- */
+/* ==========================================================================
+   1. Root Variables & Font Imports
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap');
+
 :root {
-  --bg: #f6f8fb;
-  --card: #ffffff;
-  --muted: #7b8794;
-  --accent: #2b7cff;
-  --accent-light: #e6efff;
-  --sidebar-bg: #1f2937;
-  --sidebar-accent: #374151;
-  --text: #0f1724;
-  --success: #16a34a;
-  --danger: #dc2626;
-  --border-radius: 14px;
-  --shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  --font: 'Inter', 'Roboto', sans-serif;
+  /* --- Color Palette --- */
+  --bg: #f6f8fb;              /* Main background */
+  --card: #ffffff;            /* Card/panel background */
+  --muted: #7b8794;            /* Muted text (labels, subheadings) */
+  --text: #0f1724;             /* Main text */
+  
+  --accent: #2b7cff;           /* Primary accent (buttons, active links) */
+  --accent-light: #e0e9ff;     /* Light accent (focus rings) */
+
+  --sidebar-bg: #1f2937;       /* Dark sidebar */
+  --sidebar-accent: #374151;   /* Sidebar hover state */
+  --sidebar-text: #d1d5db;     /* Sidebar navigation text */
+  --sidebar-text-hover: #ffffff;
+
+  /* --- Sizing & Shadows --- */
+  --sidebar-width: 240px;
+  --card-radius: 16px;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* ==========================================================================
+   2. Global Resets & Typography
+   ========================================================================== */
 
-/* --- Reset some Streamlit defaults --- */
-body, .block-container {
-  background: var(--bg) !important;
-  font-family: var(--font) !important;
-  color: var(--text) !important;
+/* Use border-box sizing for all elements */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-/* --- Sidebar --- */
+body {
+  font-family: 'Inter', 'Roboto', sans-serif;
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+/* Main app container */
+div.main .block-container {
+  padding: 2rem;
+}
+
+/* Hide Streamlit's default header on desktop */
+@media (min-width: 961px) {
+  header[data-testid="stHeader"] {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   3. Dark Sidebar (Left Navigation)
+   ========================================================================== */
+
 section[data-testid="stSidebar"] {
-  background-color: var(--sidebar-bg) !important;
-  color: #f9fafb !important;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--sidebar-bg);
+  border-right: 0;
+  width: var(--sidebar-width) !important; /* Force width */
 }
 
-section[data-testid="stSidebar"] * {
-  color: #f9fafb !important;
-}
-
-section[data-testid="stSidebar"] .css-1v3fvcr {
-  background: transparent !important;
-}
-
-/* Sidebar header/logo area */
-section[data-testid="stSidebar"] > div:first-child::before {
-  content: "Family Expense Tracker";
-  display: block;
-  font-weight: 700;
-  font-size: 1.2rem;
-  text-align: center;
-  margin: 1rem 0 1.5rem;
-  color: #fff;
-}
-
-/* Sidebar nav links hover/active */
-section[data-testid="stSidebar"] a:hover {
-  background-color: var(--sidebar-accent) !important;
-  border-radius: 8px;
-}
-
-/* --- Main content area --- */
-main.block-container {
-  padding-top: 1rem !important;
-  padding-left: 2rem !important;
-  padding-right: 2rem !important;
-}
-
-/* --- KPI cards row --- */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.kpi-card {
-  background: var(--card);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
-  padding: 1rem 1.5rem;
+/* Sidebar content container */
+div[data-testid="stSidebarUserContent"] {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.5rem 1rem;
+}
+
+/* Logo Area (using pseudo-element) */
+div[data-testid="stSidebarUserContent"]::before {
+  content: '';
+  display: block;
+  height: 40px;
+  margin-bottom: 2rem;
+  background-image: url('static/logo.png'); /* Asset Path */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Sidebar Navigation (styles st.radio used as nav) */
+div[data-testid="stRadio"] {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+div[data-testid="stRadio"] label {
+  display: block;
+  padding: 0.75rem 1rem;
+  margin: 0.25rem 0;
+  color: var(--sidebar-text);
+  border-radius: 8px;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.kpi-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+/* Nav hover state */
+div[data-testid="stRadio"] label:hover {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-text-hover);
 }
 
-.kpi-icon {
-  background: var(--accent-light);
-  color: var(--accent);
-  border-radius: 12px;
-  padding: 0.6rem;
-  font-size: 1.2rem;
+/* Nav active state (selected radio item) */
+div[data-testid="stRadio"] label[aria-checked="true"] {
+  background-color: var(--accent);
+  color: var(--sidebar-text-hover);
+  font-weight: 600;
 }
 
-.kpi-value {
-  font-size: 1.4rem;
-  font-weight: 700;
+/* Hide the actual radio button inputs */
+div[data-testid="stRadio"] input[type="radio"] {
+  display: none;
 }
 
-.kpi-label {
-  font-size: 0.9rem;
-  color: var(--muted);
+/* Avatar Area (using pseudo-element, pushed to bottom) */
+/* Note: This pushes to the bottom of the *sidebar content*,
+   which is the best we can do without custom HTML. */
+div[data-testid="stSidebarUserContent"]::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin-top: auto; /* Pushes to bottom */
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1rem;
+  background-image: url('static/avatar-default.png'); /* Asset Path */
+  background-size: cover;
+  border-radius: 50%;
+  border: 2px solid var(--sidebar-accent);
 }
 
-/* --- Card container (for charts, tables, etc.) --- */
-.card {
-  background: var(--card);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
+/* ==========================================================================
+   4. Main Content Area
+   ========================================================================== */
+
+/* Main content wrapper */
+section.main {
+  background-color: var(--bg);
+}
+
+/* Apply margin to main content to account for fixed sidebar on desktop */
+@media (min-width: 961px) {
+  section.main {
+    margin-left: var(--sidebar-width);
+  }
+}
+
+/* * NOTE: Topbar Styling (Impossible Constraint)
+ * The reference UI has a light topbar with search and icons.
+ * This element does NOT exist in a standard Streamlit app.
+ * CSS cannot create HTML elements.
+ * Therefore, this section is omitted as it's impossible
+ * without modifying app.py to add custom HTML.
+ */
+
+/* ==========================================================================
+   5. KPI Row (Styling st.metric)
+   ========================================================================== */
+
+div[data-testid="stMetric"] {
+  background-color: var(--card);
+  border-radius: var(--card-radius);
   padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+div[data-testid="stMetric"]:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* Metric label (e.g., "Total Clients") */
+div[data-testid="stMetricLabel"] {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Metric value (e.g., "43") */
+div[data-testid="stMetricValue"] {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--text);
+  padding-top: 0.25rem;
+}
+
+/* Metric delta (e.g., "+3.2%") */
+div[data-testid="stMetricDelta"] {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* * NOTE: KPI Icons (Impossible Constraint)
+ * The reference UI has icons on the left of KPI cards.
+ * st.metric does not support icons.
+ * This cannot be added with CSS alone.
+ */
+
+/* ==========================================================================
+   6. Content Cards (Charts, Tables)
+   ========================================================================== */
+
+/* * Apply card styling to common Streamlit blocks like
+ * dataframes and charts.
+ */
+div[data-testid="stDataFrame"],
+div[data-testid="stPlotlyChart"],
+div[data-testid="stAltairChart"],
+div[data-testid="stGraphVizChart"],
+div[data-testid="stDeckGlJsonChart"],
+div[data-testid="stBokehChart"],
+div[data-testid="stPydeckChart"],
+div[data-testid="stArrowPlotlyChart"] {
+  background-color: var(--card);
+  border-radius: var(--card-radius);
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
   margin-bottom: 1.5rem;
 }
 
-.card h3 {
+/* Chart/Table Titles (e.g., "Statistics") */
+/* We target the st.subheader or st.write just *before* a chart */
+h3 {
+  font-size: 1.25rem;
   font-weight: 600;
-  font-size: 1rem;
+  color: var(--text);
   margin-bottom: 1rem;
 }
 
-/* --- Transaction list table --- */
-.transaction-row {
-  display: grid;
-  grid-template-columns: 80px 1fr 100px 100px 80px;
-  align-items: center;
-  padding: 0.8rem 1rem;
+/* ==========================================================================
+   7. Transaction Table (Styling st.dataframe)
+   ========================================================================== */
+
+/* Remove card padding to let table be full-width */
+div[data-testid="stDataFrame"] {
+  padding: 0;
+  overflow: hidden; /* Clips table border-radius */
+}
+
+div[data-testid="stDataFrame"] table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Table Header */
+div[data-testid="stDataFrame"] thead th {
+  background-color: #f9fafb; /* Lightest grey */
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
   border-bottom: 1px solid #e5e7eb;
-  transition: background 0.2s ease;
 }
 
-.transaction-row:hover {
-  background: #f9fafb;
+/* Table Body */
+div[data-testid="stDataFrame"] tbody td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  color: var(--text);
+  font-size: 0.9rem;
 }
 
-.amount-pos {
-  color: var(--success);
-  font-weight: 600;
-}
+/* * NOTE: Conditional Colors (Impossible Constraint)
+ * The request to color-code positive/negative amounts
+ * cannot be done with pure CSS, as CSS cannot read
+ * the content of a table cell. This requires
+ * Python-side styling (e.t., df.style.apply).
+ */
 
-.amount-neg {
-  color: var(--danger);
-  font-weight: 600;
-}
+/* ==========================================================================
+   8. Form Elements (Buttons, Inputs) & Toasts
+   ========================================================================== */
 
-/* --- Chart placeholder --- */
-.chart-placeholder {
-  height: 220px;
-  background: repeating-linear-gradient(
-    45deg,
-    #f3f4f6,
-    #f3f4f6 10px,
-    #e5e7eb 10px,
-    #e5e7eb 20px
-  );
-  border-radius: var(--border-radius);
-}
-
-/* --- Toast/Notification --- */
-.action-toast {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: var(--accent);
+/* Primary Button */
+button[data-testid="stButton"] button {
+  background-color: var(--accent);
   color: #fff;
-  padding: 0.8rem 1.2rem;
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
-  animation: fadein 0.5s, fadeout 0.5s 4.5s;
-}
-
-@keyframes fadein {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeout {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(20px); }
-}
-
-/* --- Buttons --- */
-button, .stButton > button {
-  background: var(--accent) !important;
-  color: #fff !important;
-  border: none !important;
-  border-radius: 8px !important;
-  padding: 0.6rem 1.2rem !important;
-  font-weight: 600 !important;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.5rem 1.25rem;
+  font-weight: 600;
   transition: all 0.2s ease;
 }
 
-button:hover, .stButton > button:hover {
-  background: #1d4ed8 !important;
-  transform: translateY(-1px);
+button[data-testid="stButton"] button:hover {
+  background-color: var(--accent);
+  opacity: 0.9;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* --- Responsive adjustments --- */
+button[data-testid="stButton"] button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+/* Text Inputs */
+div[data-testid="stTextInput"] input,
+div[data-testid="stDateInput"] input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+div[data-testid="stTextInput"]:focus-within input,
+div[data-testid="stDateInput"]:focus-within input {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+/* Selectbox */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+  border-radius: 8px;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+  border-color: #cbd5e1 !important; /* Override inline style */
+}
+
+/* Toast / Undo Notification */
+div[data-testid="stToast"] {
+  background-color: var(--sidebar-bg);
+  color: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+/* ==========================================================================
+   9. Responsive Breakpoints
+   ========================================================================== */
+
 @media (max-width: 960px) {
-  .kpi-row {
-    grid-template-columns: 1fr 1fr;
-  }
-  .transaction-row {
-    grid-template-columns: 60px 1fr 80px;
-  }
-  main.block-container {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+  /* Let Streamlit's default mobile behavior take over */
+  /* (e.g., sidebar collapses behind hamburger) */
+  
+  /* Stack columns */
+  div[data-testid="stHorizontalBlock"] {
+    flex-direction: column;
   }
 }
