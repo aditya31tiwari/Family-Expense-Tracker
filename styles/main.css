@@ -1,70 +1,217 @@
-/* Hide Streamlit chrome */
-#MainMenu { visibility: hidden; }
-footer { visibility: hidden; }
-header { visibility: hidden; }
+/* ui-dashboard.css */
+/* -----------------------------------------------------
+   Family Expense Tracker Dashboard Style
+   Inspired by Crema dashboard UI (dark sidebar + light content)
+   ----------------------------------------------------- */
 
-/* Page Background (preserve your previous background) */
-[data-testid="stAppViewContainer"] {
-    background-color: #444cf755;
-    opacity: 0.8;
-    background-image:
-      repeating-radial-gradient(circle at 0 0, transparent 0, #000000 10px),
-      repeating-linear-gradient(#00000055, #000000);
-    /* allow full-bleed background while content is controlled below */
-}
-
-/* Make the app "wide" but keep a comfortable readable content width */
+/* --- Theme variables --- */
 :root {
-    /* Change this if you want a wider or narrower central column */
-    --content-max-width: 1200px;
-    --page-side-padding: 2rem;
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --muted: #7b8794;
+  --accent: #2b7cff;
+  --accent-light: #e6efff;
+  --sidebar-bg: #1f2937;
+  --sidebar-accent: #374151;
+  --text: #0f1724;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --border-radius: 14px;
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --font: 'Inter', 'Roboto', sans-serif;
 }
 
-/* Ensure the app view container can use full width */
-[data-testid="stAppViewContainer"] {
-    max-width: 100% !important;
-    padding-left: var(--page-side-padding) !important;
-    padding-right: var(--page-side-padding) !important;
-    box-sizing: border-box;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* --- Reset some Streamlit defaults --- */
+body, .block-container {
+  background: var(--bg) !important;
+  font-family: var(--font) !important;
+  color: var(--text) !important;
 }
 
-/* Control the readable content area inside the app.
-   This keeps everything centered but allows the page to expand across the screen. */
-.block-container,
-[data-testid="stBlock"] {
-    max-width: var(--content-max-width) !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    width: 100% !important;
-    box-sizing: border-box;
-    padding-top: 1.25rem !important;
-    padding-bottom: 1.5rem !important;
+/* --- Sidebar --- */
+section[data-testid="stSidebar"] {
+  background-color: var(--sidebar-bg) !important;
+  color: #f9fafb !important;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Small screens — reduce side padding and use full width */
-@media (max-width: 900px) {
-    :root { --page-side-padding: 1rem; --content-max-width: 100%; }
-    .block-container { padding-left: 1rem !important; padding-right: 1rem !important; }
+section[data-testid="stSidebar"] * {
+  color: #f9fafb !important;
 }
 
-/* Make KPI/columns breathe — add more horizontal space for three-column layouts */
-.css-1y4p8pa, .stColumns, .stColumn { /* generic targets — safe and minimal */
-    gap: 1.25rem !important;
+section[data-testid="stSidebar"] .css-1v3fvcr {
+  background: transparent !important;
 }
 
-/* Dataframe/table styling: allow horizontal scrolling if table is wide */
-[data-testid="stDataFrame"] > div {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+/* Sidebar header/logo area */
+section[data-testid="stSidebar"] > div:first-child::before {
+  content: "Family Expense Tracker";
+  display: block;
+  font-weight: 700;
+  font-size: 1.2rem;
+  text-align: center;
+  margin: 1rem 0 1.5rem;
+  color: #fff;
 }
 
-/* Buttons, cards and panels: add consistent margins so things don't feel cramped */
-.stButton, .stMetric, .stExpander {
-    margin-bottom: 1rem !important;
+/* Sidebar nav links hover/active */
+section[data-testid="stSidebar"] a:hover {
+  background-color: var(--sidebar-accent) !important;
+  border-radius: 8px;
 }
 
-/* Optional: subtle max width for very wide monitors (keeps layout readable) */
-/* If you prefer fully edge-to-edge, remove this block */
-@media (min-width: 1600px) {
-    .block-container { max-width: 1400px !important; }
+/* --- Main content area --- */
+main.block-container {
+  padding-top: 1rem !important;
+  padding-left: 2rem !important;
+  padding-right: 2rem !important;
+}
+
+/* --- KPI cards row --- */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpi-card {
+  background: var(--card);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-icon {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 12px;
+  padding: 0.6rem;
+  font-size: 1.2rem;
+}
+
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.kpi-label {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* --- Card container (for charts, tables, etc.) --- */
+.card {
+  background: var(--card);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.card h3 {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Transaction list table --- */
+.transaction-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 100px 100px 80px;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.2s ease;
+}
+
+.transaction-row:hover {
+  background: #f9fafb;
+}
+
+.amount-pos {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.amount-neg {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* --- Chart placeholder --- */
+.chart-placeholder {
+  height: 220px;
+  background: repeating-linear-gradient(
+    45deg,
+    #f3f4f6,
+    #f3f4f6 10px,
+    #e5e7eb 10px,
+    #e5e7eb 20px
+  );
+  border-radius: var(--border-radius);
+}
+
+/* --- Toast/Notification --- */
+.action-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.8rem 1.2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  animation: fadein 0.5s, fadeout 0.5s 4.5s;
+}
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeout {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(20px); }
+}
+
+/* --- Buttons --- */
+button, .stButton > button {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 1.2rem !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease;
+}
+
+button:hover, .stButton > button:hover {
+  background: #1d4ed8 !important;
+  transform: translateY(-1px);
+}
+
+/* --- Responsive adjustments --- */
+@media (max-width: 960px) {
+  .kpi-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .transaction-row {
+    grid-template-columns: 60px 1fr 80px;
+  }
+  main.block-container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
 }
