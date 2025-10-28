@@ -1,366 +1,70 @@
-/* ui-dashboard.css */
-/*
- * Streamlit Dashboard Stylesheet
- *
- * How to use:
- * 1. Place this file in your app's `static/` directory (if you have one)
- * and load it (requires Streamlit server config).
- * 2. OR: Minify this file and inject it directly into your app.py using:
- * with open("ui-dashboard.css") as f:
- * st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
- *
- * How to customize:
- * - Change the accent color: Modify `--accent`
- * - Change sidebar width: Modify `--sidebar-width`
- */
+/* Hide Streamlit chrome */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+header { visibility: hidden; }
 
-/* ==========================================================================
-   1. Root Variables & Font Imports
-   ========================================================================== */
+/* Page Background (preserve your previous background) */
+[data-testid="stAppViewContainer"] {
+    background-color: #444cf755;
+    opacity: 0.8;
+    background-image:
+      repeating-radial-gradient(circle at 0 0, transparent 0, #000000 10px),
+      repeating-linear-gradient(#00000055, #000000);
+    /* allow full-bleed background while content is controlled below */
+}
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap');
-
+/* Make the app "wide" but keep a comfortable readable content width */
 :root {
-  /* --- Color Palette --- */
-  --bg: #f6f8fb;              /* Main background */
-  --card: #ffffff;            /* Card/panel background */
-  --muted: #7b8794;            /* Muted text (labels, subheadings) */
-  --text: #0f1724;             /* Main text */
-  
-  --accent: #2b7cff;           /* Primary accent (buttons, active links) */
-  --accent-light: #e0e9ff;     /* Light accent (focus rings) */
-
-  --sidebar-bg: #1f2937;       /* Dark sidebar */
-  --sidebar-accent: #374151;   /* Sidebar hover state */
-  --sidebar-text: #d1d5db;     /* Sidebar navigation text */
-  --sidebar-text-hover: #ffffff;
-
-  /* --- Sizing & Shadows --- */
-  --sidebar-width: 240px;
-  --card-radius: 16px;
-  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.08);
+    /* Change this if you want a wider or narrower central column */
+    --content-max-width: 1200px;
+    --page-side-padding: 2rem;
 }
 
-/* ==========================================================================
-   2. Global Resets & Typography
-   ========================================================================== */
-
-/* Use border-box sizing for all elements */
-*, *::before, *::after {
-  box-sizing: border-box;
+/* Ensure the app view container can use full width */
+[data-testid="stAppViewContainer"] {
+    max-width: 100% !important;
+    padding-left: var(--page-side-padding) !important;
+    padding-right: var(--page-side-padding) !important;
+    box-sizing: border-box;
 }
 
-body {
-  font-family: 'Inter', 'Roboto', sans-serif;
-  color: var(--text);
-  background-color: var(--bg);
+/* Control the readable content area inside the app.
+   This keeps everything centered but allows the page to expand across the screen. */
+.block-container,
+[data-testid="stBlock"] {
+    max-width: var(--content-max-width) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.5rem !important;
 }
 
-/* Main app container */
-div.main .block-container {
-  padding: 2rem;
+/* Small screens — reduce side padding and use full width */
+@media (max-width: 900px) {
+    :root { --page-side-padding: 1rem; --content-max-width: 100%; }
+    .block-container { padding-left: 1rem !important; padding-right: 1rem !important; }
 }
 
-/* Hide Streamlit's default header on desktop */
-@media (min-width: 961px) {
-  header[data-testid="stHeader"] {
-    display: none;
-  }
+/* Make KPI/columns breathe — add more horizontal space for three-column layouts */
+.css-1y4p8pa, .stColumns, .stColumn { /* generic targets — safe and minimal */
+    gap: 1.25rem !important;
 }
 
-/* ==========================================================================
-   3. Dark Sidebar (Left Navigation)
-   ========================================================================== */
-
-section[data-testid="stSidebar"] {
-  background-color: var(--sidebar-bg);
-  border-right: 0;
-  width: var(--sidebar-width) !important; /* Force width */
+/* Dataframe/table styling: allow horizontal scrolling if table is wide */
+[data-testid="stDataFrame"] > div {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-/* Sidebar content container */
-div[data-testid="stSidebarUserContent"] {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 1.5rem 1rem;
+/* Buttons, cards and panels: add consistent margins so things don't feel cramped */
+.stButton, .stMetric, .stExpander {
+    margin-bottom: 1rem !important;
 }
 
-/* Logo Area (using pseudo-element) */
-div[data-testid="stSidebarUserContent"]::before {
-  content: '';
-  display: block;
-  height: 40px;
-  margin-bottom: 2rem;
-  background-image: url('static/logo.png'); /* Asset Path */
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-/* Sidebar Navigation (styles st.radio used as nav) */
-div[data-testid="stRadio"] {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-div[data-testid="stRadio"] label {
-  display: block;
-  padding: 0.75rem 1rem;
-  margin: 0.25rem 0;
-  color: var(--sidebar-text);
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-/* Nav hover state */
-div[data-testid="stRadio"] label:hover {
-  background-color: var(--sidebar-accent);
-  color: var(--sidebar-text-hover);
-}
-
-/* Nav active state (selected radio item) */
-div[data-testid="stRadio"] label[aria-checked="true"] {
-  background-color: var(--accent);
-  color: var(--sidebar-text-hover);
-  font-weight: 600;
-}
-
-/* Hide the actual radio button inputs */
-div[data-testid="stRadio"] input[type="radio"] {
-  display: none;
-}
-
-/* Avatar Area (using pseudo-element, pushed to bottom) */
-/* Note: This pushes to the bottom of the *sidebar content*,
-   which is the best we can do without custom HTML. */
-div[data-testid="stSidebarUserContent"]::after {
-  content: '';
-  display: block;
-  width: 40px;
-  height: 40px;
-  margin-top: auto; /* Pushes to bottom */
-  margin-left: auto;
-  margin-right: auto;
-  margin-bottom: 1rem;
-  background-image: url('static/avatar-default.png'); /* Asset Path */
-  background-size: cover;
-  border-radius: 50%;
-  border: 2px solid var(--sidebar-accent);
-}
-
-/* ==========================================================================
-   4. Main Content Area
-   ========================================================================== */
-
-/* Main content wrapper */
-section.main {
-  background-color: var(--bg);
-}
-
-/* Apply margin to main content to account for fixed sidebar on desktop */
-@media (min-width: 961px) {
-  section.main {
-    margin-left: var(--sidebar-width);
-  }
-}
-
-/* * NOTE: Topbar Styling (Impossible Constraint)
- * The reference UI has a light topbar with search and icons.
- * This element does NOT exist in a standard Streamlit app.
- * CSS cannot create HTML elements.
- * Therefore, this section is omitted as it's impossible
- * without modifying app.py to add custom HTML.
- */
-
-/* ==========================================================================
-   5. KPI Row (Styling st.metric)
-   ========================================================================== */
-
-div[data-testid="stMetric"] {
-  background-color: var(--card);
-  border-radius: var(--card-radius);
-  padding: 1.5rem;
-  box-shadow: var(--card-shadow);
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-}
-
-div[data-testid="stMetric"]:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--card-shadow-hover);
-}
-
-/* Metric label (e.g., "Total Clients") */
-div[data-testid="stMetricLabel"] {
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-/* Metric value (e.g., "43") */
-div[data-testid="stMetricValue"] {
-  font-size: 2.25rem;
-  font-weight: 700;
-  color: var(--text);
-  padding-top: 0.25rem;
-}
-
-/* Metric delta (e.g., "+3.2%") */
-div[data-testid="stMetricDelta"] {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-/* * NOTE: KPI Icons (Impossible Constraint)
- * The reference UI has icons on the left of KPI cards.
- * st.metric does not support icons.
- * This cannot be added with CSS alone.
- */
-
-/* ==========================================================================
-   6. Content Cards (Charts, Tables)
-   ========================================================================== */
-
-/* * Apply card styling to common Streamlit blocks like
- * dataframes and charts.
- */
-div[data-testid="stDataFrame"],
-div[data-testid="stPlotlyChart"],
-div[data-testid="stAltairChart"],
-div[data-testid="stGraphVizChart"],
-div[data-testid="stDeckGlJsonChart"],
-div[data-testid="stBokehChart"],
-div[data-testid="stPydeckChart"],
-div[data-testid="stArrowPlotlyChart"] {
-  background-color: var(--card);
-  border-radius: var(--card-radius);
-  padding: 1.5rem;
-  box-shadow: var(--card-shadow);
-  margin-bottom: 1.5rem;
-}
-
-/* Chart/Table Titles (e.g., "Statistics") */
-/* We target the st.subheader or st.write just *before* a chart */
-h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 1rem;
-}
-
-/* ==========================================================================
-   7. Transaction Table (Styling st.dataframe)
-   ========================================================================== */
-
-/* Remove card padding to let table be full-width */
-div[data-testid="stDataFrame"] {
-  padding: 0;
-  overflow: hidden; /* Clips table border-radius */
-}
-
-div[data-testid="stDataFrame"] table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-/* Table Header */
-div[data-testid="stDataFrame"] thead th {
-  background-color: #f9fafb; /* Lightest grey */
-  color: var(--muted);
-  font-weight: 600;
-  text-align: left;
-  padding: 0.75rem 1rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* Table Body */
-div[data-testid="stDataFrame"] tbody td {
-  padding: 0.75rem 1rem;
-  border-top: 1px solid #e5e7eb;
-  color: var(--text);
-  font-size: 0.9rem;
-}
-
-/* * NOTE: Conditional Colors (Impossible Constraint)
- * The request to color-code positive/negative amounts
- * cannot be done with pure CSS, as CSS cannot read
- * the content of a table cell. This requires
- * Python-side styling (e.t., df.style.apply).
- */
-
-/* ==========================================================================
-   8. Form Elements (Buttons, Inputs) & Toasts
-   ========================================================================== */
-
-/* Primary Button */
-button[data-testid="stButton"] button {
-  background-color: var(--accent);
-  color: #fff;
-  border: 0;
-  border-radius: 8px;
-  padding: 0.5rem 1.25rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-button[data-testid="stButton"] button:hover {
-  background-color: var(--accent);
-  opacity: 0.9;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-
-button[data-testid="stButton"] button:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--accent-light);
-}
-
-/* Text Inputs */
-div[data-testid="stTextInput"] input,
-div[data-testid="stDateInput"] input {
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-div[data-testid="stTextInput"]:focus-within input,
-div[data-testid="stDateInput"]:focus-within input {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-light);
-}
-
-/* Selectbox */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] {
-  border-radius: 8px;
-}
-
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-  border-color: #cbd5e1 !important; /* Override inline style */
-}
-
-/* Toast / Undo Notification */
-div[data-testid="stToast"] {
-  background-color: var(--sidebar-bg);
-  color: #fff;
-  border-radius: 8px;
-  padding: 1rem 1.5rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-}
-
-/* ==========================================================================
-   9. Responsive Breakpoints
-   ========================================================================== */
-
-@media (max-width: 960px) {
-  /* Let Streamlit's default mobile behavior take over */
-  /* (e.g., sidebar collapses behind hamburger) */
-  
-  /* Stack columns */
-  div[data-testid="stHorizontalBlock"] {
-    flex-direction: column;
-  }
+/* Optional: subtle max width for very wide monitors (keeps layout readable) */
+/* If you prefer fully edge-to-edge, remove this block */
+@media (min-width: 1600px) {
+    .block-container { max-width: 1400px !important; }
 }
